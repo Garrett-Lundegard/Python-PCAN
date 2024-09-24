@@ -15,27 +15,16 @@ def uninitialize_pcan_channel(channel):
     """Uninitialize a specific CAN channel."""
     pcan.Uninitialize(channel)
 
-def send_test_message(channel):
-    """Send a test CAN message on the specified channel."""
-    msg = TPCANMsg()
-    msg.ID = 0x100  # Example message ID
-    msg.MSGTYPE = PCAN_MESSAGE_STANDARD
-    msg.LEN = 8  # Data length
-    msg.DATA = (0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08)
-
-    result = pcan.Write(channel, msg)
-    if result != PCAN_ERROR_OK:
-        print(f"Error sending message on channel {channel}. Error code: {result}")
-    else:
-        print(f"Message sent successfully on channel {channel}")
-
-def read_messages(channel):
-    """Read incoming messages from the CAN channel."""
+def check_device_id(channel, target_id=32):
+    """Check for the mjbots power distribution board based on its default ID."""
     result, msg, timestamp = pcan.Read(channel)
     if result == PCAN_ERROR_OK:
-        print(f"Received message on channel {channel} with ID: {msg.ID}, Data: {msg.DATA}")
+        if msg.ID == target_id:
+            print(f"mjbots Power Distribution Board detected with ID {msg.ID}")
+        else:
+            print(f"Detected device with ID {msg.ID}, but it does not match the expected ID {target_id}.")
     else:
-        print(f"No messages to read on channel {channel}. Status: {result}")
+        print(f"No message read from CAN. Status: {result}")
 
 if __name__ == "__main__":
     # Initialize CAN1 (PCAN_USBBUS1)
@@ -43,11 +32,8 @@ if __name__ == "__main__":
     if initialize_pcan_channel(channel):
         print(f"CAN1 (channel {channel}) initialized successfully.")
         
-        # Send a test message
-        send_test_message(channel)
-
-        # Attempt to read any incoming messages
-        read_messages(channel)
+        # Check for the mjbots power distribution board ID
+        check_device_id(channel, target_id=32)
 
         # Uninitialize CAN1
         uninitialize_pcan_channel(channel)
