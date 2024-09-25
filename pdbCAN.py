@@ -17,6 +17,8 @@ _, channels = pcan.GetValue(PCAN_NONEBUS, PCAN_ATTACHED_CHANNELS)
 result = pcan.InitializeFD(channel, BitrateFD)
 print(pcan.GetErrorText(result))
 
-MessageBuffer = "0x0000"
-print(pcan.GetErrorText(pcan.WriteFD(channel, MessageBuffer)))
+msg = TPCANMsgFD()
+
+
+print(pcan.GetErrorText(pcan.WriteFD(channel, msg)))
 

@@ -3,7 +3,7 @@ from PCANBasic import *
 
 # Constants
 CAN_CHANNEL = PCAN_USBBUS1  # Channel for PCAN-USB Pro FD
-BITRATE_FD = b"f_clock=80000000,nom_brp=10,nom_tseg1=5,nom_tseg2=2,nom_sjw=1,data_brp=4,data_tseg1=7,data_tseg2=2,data_sjw=1"
+BITRATE_FD = b"f_clock=80000000,nom_brp=8,nom_tseg1=13,nom_tseg2=2,nom_sjw=1,data_brp=4,data_tseg1=7,data_tseg2=2,data_sjw=1"
 PDB_CAN_ID = 32  # Default CAN ID for the power distribution board
 
 # Create an instance of the PCANBasic class
