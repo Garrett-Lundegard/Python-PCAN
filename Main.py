@@ -1,70 +1,47 @@
-from PCANBasic import *
 import time
+from PCANBasic import *
 
-# Initialize the PCAN instance
+# Constants
+CAN_CHANNEL = PCAN_USBBUS1  # Channel for PCAN-USB Pro FD
+BITRATE_FD = b"f_clock=80000000,nom_brp=10,nom_tseg1=5,nom_tseg2=2,nom_sjw=1,data_brp=4,data_tseg1=7,data_tseg2=2,data_sjw=1"
+PDB_CAN_ID = 32  # Default CAN ID for the power distribution board
+
+# Create an instance of the PCANBasic class
 pcan = PCANBasic()
 
-STATUS_REQUEST_ID = 0x8001  # ID for sending from source 0 to destination 1
-STATUS_RESPONSE_ID = 0x100  # ID for receiving response from device 1 to source 0
+# Initialize the CAN-FD channel
+result = pcan.InitializeFD(CAN_CHANNEL, BITRATE_FD)
+if result != PCAN_ERROR_OK:
+    print("Failed to initialize CAN-FD channel. Error:", result)
+    exit()
 
-# CAN registers for status info (Voltage, Temperature, Fault Code)
-REGISTER_VOLTAGE = 0x00D
-REGISTER_TEMPERATURE = 0x00E
-REGISTER_FAULT_CODE = 0x00F
+# Prepare a CAN FD message to request PDB status (0x000 - State register)
+msg = TPCANMsgFD()
+msg.ID = PDB_CAN_ID
+msg.MSGTYPE = PCAN_MESSAGE_FD
+msg.DLC = 1  # Length of the message
+msg.DATA[0] = 0x00  # Command to read PDB state (register 0x000)
 
-def initialize_pcan_channel(channel, baudrate=PCAN_BAUD_1M):
-    """Initialize a specific CAN channel."""
-    result = pcan.Initialize(channel, baudrate)
-    if result != PCAN_ERROR_OK:
-        print(f"Error initializing CAN channel {channel}. Error code: {result}")
-        return False
-    return True
+# Send the CAN FD message
+result = pcan.WriteFD(CAN_CHANNEL, msg)
+if result != PCAN_ERROR_OK:
+    print("Failed to send CAN message. Error:", result)
+    exit()
 
-def uninitialize_pcan_channel(channel):
-    """Uninitialize a specific CAN channel."""
-    pcan.Uninitialize(channel)
+print("Message sent, waiting for response...")
 
-def send_status_request(channel):
-    """Send a status request command to the specified target CAN ID."""
-    msg = TPCANMsg()
-    msg.ID = STATUS_REQUEST_ID  # Send from source 0 to destination 1 with reply
-    msg.MSGTYPE = PCAN_MESSAGE_STANDARD
-    msg.LEN = 4  # Read 3 registers starting from 0x00D
-    msg.DATA = (0x14, 0x03, REGISTER_VOLTAGE, 0x00)  # Read 3 int16 registers (Voltage, Temp, Fault Code)
+# Read the response from the PDB
+time.sleep(0.1)  # Small delay to allow response
+result, response_msg, timestamp = pcan.ReadFD(CAN_CHANNEL)
 
-    result = pcan.Write(channel, msg)
-    if result != PCAN_ERROR_OK:
-        print(f"Error sending status request. Error code: {result}")
-    else:
-        print(f"Status request sent.")
+if result == PCAN_ERROR_OK:
+    # Print the received response
+    print("Response received:")
+    print("ID: 0x%X" % response_msg.ID)
+    print("DLC: %d" % response_msg.DLC)
+    print("Data: %s" % " ".join(["0x%X" % byte for byte in response_msg.DATA[:response_msg.DLC]]))
+else:
+    print("Failed to receive response. Error:", result)
 
-def read_response(channel):
-    """Read incoming messages from the CAN channel."""
-    result, msg, timestamp = pcan.Read(channel)
-    if result == PCAN_ERROR_OK and msg.ID == STATUS_RESPONSE_ID:
-        print(f"Received response from device. Data: {list(msg.DATA)}")
-        voltage = msg.DATA[0] | (msg.DATA[1] << 8)
-        temperature = msg.DATA[2] | (msg.DATA[3] << 8)
-        fault_code = msg.DATA[4]
-        print(f"Voltage: {voltage / 10.0}V, Temperature: {temperature / 10.0}C, Fault Code: {fault_code}")
-        return True
-    return False
-
-if __name__ == "__main__":
-    # Initialize CAN1 (PCAN_USBBUS1)
-    channel = PCAN_USBBUS1
-    if initialize_pcan_channel(channel):
-        print(f"CAN1 (channel {channel}) initialized successfully.")
-        
-        # Send the status request
-        send_status_request(channel)
-        time.sleep(0.1)  # Allow time for the device to respond
-
-        # Read the response
-        if not read_response(channel):
-            print("No response received.")
-
-        # Uninitialize CAN1
-        uninitialize_pcan_channel(channel)
-    else:
-        print("Failed to initialize CAN1.")
+# Uninitialize the CAN channel
+pcan.Uninitialize(CAN_CHANNEL)
