@@ -3,32 +3,37 @@ from PCANBasic import *
 
 p = PCANBasic()
 
-mR = p.Initialize(PCAN_USBBUS2, PCAN_BAUD_1M)
+bitrate = "f_clock_mhz=24, nom_brp=1, nom_tseg1=17, nom_tseg2=6, nom_sjw=1, data_brp=1, data_tseg1=16, data_tseg2=7, data_sjw=1"
+channel = PCAN_USBBUS1
 
-idRange = [1, 16] #range(1, 128)
+mR = p.InitializeFD(channel, bitrate)
+
+idRange = [1, 32] #range(16,35)
 scanDelay = 0.1
 
 for canID in idRange:
     
     print(f"Scanning CAN ID: {canID}")
     
-    msg = TPCANMsg()
+    msg = TPCANMsgFD()
     msg.ID = canID
-    msg.LEN = 1
-    msg.DATA[0] = 0x00
-    msg.MSGTYPE = PCAN_MESSAGE_STANDARD
+    msg.DLC = 3
+    msg.DATA[0] = 0x0
+    msg.DATA[1] = 0x0
+    msg.DATA[2] = 0x0
+    msg.MSGTYPE = PCAN_MESSAGE_FD
     
-    result = p.Write(PCAN_USBBUS2, msg)
+    result = p.WriteFD(channel, msg)
     if result != PCAN_ERROR_OK:
         print(f"Failed to send CAN message to ID {canID}. Error: {result}")
         continue  # Skip to the next ID if sending fails
     
     time.sleep(scanDelay)
 
-    result, returnMsg, _ = p.Read(PCAN_USBBUS2)
+    result, returnMsg, _ = p.ReadFD(channel)
     if result == PCAN_ERROR_OK:
         print(returnMsg.ID)
-        print(returnMsg.LEN)
+        print(returnMsg.DLC)
         print(returnMsg.DATA[:])
 
     time.sleep(scanDelay)
